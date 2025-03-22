@@ -168,6 +168,7 @@ pub async fn run(config: &Config, api: &CommonApi) -> Result<()> {
                                                                                 .map(|s| s.to_string())
                                                                                 .join(" "),
                                                                         ),
+                    [if let Some(v) = device.ethernet_id] "ssid" => Value::text(v), // Display ethernet id like ssid for consistency
                     "device" => Value::text(device.iface.name),
                 });
 

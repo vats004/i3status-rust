@@ -28,6 +28,7 @@ pub struct NetDevice {
     pub icon: &'static str,
     pub tun_wg_ppp: bool,
     pub nameservers: Vec<IpAddr>,
+    pub ethernet_id: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -72,6 +73,12 @@ impl NetDevice {
             .await
             .error("Failed to read nameservers")?;
 
+        let ethernet_id = if wifi_info.is_none() {
+            get_ethernet_id(&iface.name).await?
+        } else {
+            None
+        };
+
         // TODO: use netlink for the these too
         // I don't believe that this should ever change, so set it now:
         let path = Path::new("/sys/class/net").join(&iface.name);
@@ -102,6 +109,7 @@ impl NetDevice {
             icon,
             tun_wg_ppp: tun | wg | ppp,
             nameservers,
+            ethernet_id,
         }))
     }
 
@@ -453,6 +461,20 @@ async fn read_nameservers() -> Result<Vec<IpAddr>> {
     }
 
     Ok(nameservers)
+}
+
+async fn get_ethernet_id(iface_name: &str) -> Result<Option<String>> {
+    let path = Path::new("/sys/class/net").join(iface_name).join("address");
+    if path.exists() {
+        let id = util::read_file(path)
+            .await
+            .error("Failed to read Ethernet ID")?
+            .trim()
+            .to_string();
+        Ok(Some(id))
+    } else {
+        Ok(None)
+    }
 }
 
 // Source: https://www.kernel.org/doc/Documentation/networking/operstates.txt
